@@ -1,14 +1,16 @@
-import dotTypes from "../../../constants/dotTypes";
-import { DotType, GetNeighbor, DrawArgs, BasicFigureDrawArgs, RotateFigureArgs } from "../../../types";
+import dotTypes from "../../constants/dotTypes";
+import { DotType, GetNeighbor, DrawArgs, BasicFigureDrawArgs, RotateFigureArgs } from "../../types";
 
 export default class QRDot {
   _element?: SVGElement;
   _svg: SVGElement;
   _type: DotType;
+  _data?: string;
 
-  constructor({ svg, type }: { svg: SVGElement; type: DotType }) {
+  constructor({ svg, type, data }: { svg: SVGElement; type: DotType; data?: string }) {
     this._svg = svg;
     this._type = type;
+    this._data = data
   }
 
   draw(x: number, y: number, size: number, getNeighbor: GetNeighbor): void {
@@ -19,6 +21,9 @@ export default class QRDot {
       case dotTypes.dots:
         drawFunction = this._drawDot;
         break;
+      case dotTypes.randomDots:
+        drawFunction = this._drawRandomDot;
+        break;
       case dotTypes.classy:
         drawFunction = this._drawClassy;
         break;
@@ -27,6 +32,12 @@ export default class QRDot {
         break;
       case dotTypes.rounded:
         drawFunction = this._drawRounded;
+        break;
+      case dotTypes.verticalLines:
+        drawFunction = this._drawVerticalLines;
+        break;
+      case dotTypes.horizontalLines:
+        drawFunction = this._drawHorizontalLines;
         break;
       case dotTypes.extraRounded:
         drawFunction = this._drawExtraRounded;
@@ -159,15 +170,38 @@ export default class QRDot {
     this._basicDot({ x, y, size, rotation: 0 });
   }
 
+  _drawRandomDot({ x, y, size }: DrawArgs): void {
+
+    let randomFactor;
+    
+    if (!this._data) {
+      randomFactor = Math.random() * (1 - 0.6) + 0.6;
+    }else{
+      // Convert QR data to a consistent seed.
+      const seed = this._data.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+      
+      // Seeded random function
+      const seededRandom = (seed: number): number => {
+        const x = Math.sin(seed++) * 10000;
+        return x - Math.floor(x);
+      };
+      
+      // Use seededRandom to generate a consistent randomFactor based on the QR data
+      randomFactor = seededRandom(seed + x + y) * (1 - 0.6) + 0.6;
+    }
+  
+    this._basicDot({ x, y, size: size * randomFactor, rotation: 0 });
+  }
+
   _drawSquare({ x, y, size }: DrawArgs): void {
     this._basicSquare({ x, y, size, rotation: 0 });
   }
 
   _drawRounded({ x, y, size, getNeighbor }: DrawArgs): void {
-    const leftNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
-    const rightNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
-    const topNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
-    const bottomNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const leftNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
+    const rightNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const topNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
+    const bottomNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
 
     const neighborsCount = leftNeighbor + rightNeighbor + topNeighbor + bottomNeighbor;
 
@@ -212,11 +246,81 @@ export default class QRDot {
     }
   }
 
+  _drawVerticalLines({ x, y, size, getNeighbor }: DrawArgs): void {
+    const leftNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
+    const rightNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const topNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
+    const bottomNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
+
+    const neighborsCount = leftNeighbor + rightNeighbor + topNeighbor + bottomNeighbor;
+
+    if (
+      neighborsCount === 0 ||
+      (leftNeighbor && !(topNeighbor || bottomNeighbor)) ||
+      (rightNeighbor && !(topNeighbor || bottomNeighbor))
+    ) {
+      this._basicDot({ x, y, size, rotation: 0 });
+      return;
+    }
+
+    if (topNeighbor && bottomNeighbor) {
+      this._basicSquare({ x, y, size, rotation: 0 });
+      return;
+    }
+
+    if (topNeighbor && !bottomNeighbor) {
+      const rotation = Math.PI / 2;
+      this._basicSideRounded({ x, y, size, rotation });
+      return;
+    }
+
+    if (bottomNeighbor && !topNeighbor) {
+      const rotation = -Math.PI / 2;
+      this._basicSideRounded({ x, y, size, rotation });
+      return;
+    }
+  }
+
+  _drawHorizontalLines({ x, y, size, getNeighbor }: DrawArgs): void {
+    const leftNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
+    const rightNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const topNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
+    const bottomNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
+
+    const neighborsCount = leftNeighbor + rightNeighbor + topNeighbor + bottomNeighbor;
+
+    if (
+      neighborsCount === 0 ||
+      (topNeighbor && !(leftNeighbor || rightNeighbor)) ||
+      (bottomNeighbor && !(leftNeighbor || rightNeighbor))
+    ) {
+      this._basicDot({ x, y, size, rotation: 0 });
+      return;
+    }
+
+    if (leftNeighbor && rightNeighbor) {
+      this._basicSquare({ x, y, size, rotation: 0 });
+      return;
+    }
+
+    if (leftNeighbor && !rightNeighbor) {
+      const rotation = 0;
+      this._basicSideRounded({ x, y, size, rotation });
+      return;
+    }
+
+    if (rightNeighbor && !leftNeighbor) {
+      const rotation = Math.PI;
+      this._basicSideRounded({ x, y, size, rotation });
+      return;
+    }
+  }
+
   _drawExtraRounded({ x, y, size, getNeighbor }: DrawArgs): void {
-    const leftNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
-    const rightNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
-    const topNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
-    const bottomNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const leftNeighbor = getNeighbor ? +getNeighbor(0, -1) : 0;
+    const rightNeighbor = getNeighbor ? +getNeighbor(0, 1) : 0;
+    const topNeighbor = getNeighbor ? +getNeighbor(-1, 0) : 0;
+    const bottomNeighbor = getNeighbor ? +getNeighbor(1, 0) : 0;
 
     const neighborsCount = leftNeighbor + rightNeighbor + topNeighbor + bottomNeighbor;
 

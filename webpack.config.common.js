@@ -1,5 +1,6 @@
 const path = require("path");
 const { CleanWebpackPlugin } = require("clean-webpack-plugin");
+const ESLintPlugin = require("eslint-webpack-plugin");
 
 const rootPath = path.resolve(__dirname, "./");
 const srcPath = path.resolve(rootPath, "src");
@@ -10,6 +11,7 @@ module.exports = {
   output: {
     path: libPath,
     filename: "qr-code-styling.js",
+    globalObject: "this",
     library: "QRCodeStyling",
     libraryTarget: "umd",
     libraryExport: "default"
@@ -20,16 +22,10 @@ module.exports = {
         test: /\.ts$/,
         loader: "ts-loader",
         exclude: /node_modules/
-      },
-      {
-        enforce: "pre",
-        test: /\.ts$/,
-        loader: "eslint-loader",
-        exclude: /node_modules/
       }
     ]
   },
-  plugins: [new CleanWebpackPlugin()],
+  plugins: [new CleanWebpackPlugin(), new ESLintPlugin()],
   resolve: {
     extensions: [".ts", ".js"]
   }
